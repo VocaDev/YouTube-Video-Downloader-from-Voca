@@ -1,0 +1,63 @@
+{
+  "name": "youtube-downloader-desktop",
+  "version": "1.0.0",
+  "description": "Desktop YouTube video downloader using Electron and yt-dlp",
+  "main": "src/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --publish=never"
+  },
+  "keywords": [
+    "youtube",
+    "downloader",
+    "electron",
+    "desktop"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "node-fetch": "^2.7.0"
+  },
+  "devDependencies": {
+    "electron": "^37.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.yourname.youtube-downloader",
+    "productName": "YouTube Downloader",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/",
+        "to": "bin/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}
