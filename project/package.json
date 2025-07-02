@@ -6,10 +6,9 @@
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev",
-    "build": "electron-builder",
+    "dev": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder --publish=never"
+    "dist": "electron-builder"
   },
   "keywords": [
     "youtube",
@@ -25,39 +24,28 @@
   },
   "devDependencies": {
     "electron": "^37.1.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.yourname.youtube-downloader",
-    "productName": "YouTube Downloader",
-    "directories": {
-      "output": "dist"
-    },
+    "appId": "com.yourapp.id",
+    "productName": "YouTubeDownloader",
     "files": [
       "src/**/*",
-      "assets/**/*",
-      "node_modules/**/*"
+      "bin/**/*",
+      "package.json"
     ],
     "extraResources": [
       {
-        "from": "bin/",
-        "to": "bin/",
-        "filter": [
-          "**/*"
-        ]
+        "from": "bin/yt-dlp.exe",
+        "to": "bin/yt-dlp.exe"
       }
     ],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": "nsis"
     },
-    "mac": {
-      "target": "dmg",
-      "icon": "assets/icon.icns"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "assets/icon.png"
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

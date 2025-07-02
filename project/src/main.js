@@ -28,7 +28,6 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Remove menu bar
   mainWindow.setMenuBarVisibility(false);
 }
 
@@ -46,26 +45,31 @@ app.on('activate', () => {
   }
 });
 
-// Get yt-dlp path
+// Merr path për yt-dlp.exe, bazuar në dev ose prod
 function getYtDlpPath() {
-  const isDev = process.argv.includes('--dev');
-  
+  const isDev = !app.isPackaged;  // true në dev mode, false në build
+
   if (isDev) {
-    // In development, look for yt-dlp in bin folder
+    // Në dev kërkon yt-dlp në folderin bin në rrënjë të projektit
     return path.join(__dirname, '../bin/yt-dlp.exe');
   } else {
-    // In production, look in resources
-    return path.join(process.resourcesPath, 'bin/yt-dlp.exe');
+    // Në build kërkon yt-dlp në folderin resources të paketuar
+    return path.join(process.resourcesPath, 'bin', 'yt-dlp.exe');
   }
 }
 
-// Check if yt-dlp exists
+// Kontrollon nëse yt-dlp ekziston
 function checkYtDlp() {
   const ytDlpPath = getYtDlpPath();
   return fs.existsSync(ytDlpPath);
 }
 
+// Për debug, printo path dhe nëse ekziston
+console.log('Yt-dlp path:', getYtDlpPath());
+console.log('Yt-dlp ekziston:', checkYtDlp());
+
 // IPC Handlers
+
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
@@ -82,7 +86,6 @@ ipcMain.handle('get-default-folder', () => {
   const desktopPath = path.join(os.homedir(), 'Desktop');
   const defaultFolder = path.join(desktopPath, 'YouTube Videos');
   
-  // Create folder if it doesn't exist
   if (!fs.existsSync(defaultFolder)) {
     fs.mkdirSync(defaultFolder, { recursive: true });
   }
@@ -116,11 +119,11 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
       ];
     }
 
-    const process = spawn(ytDlpPath, args);
+    const ytProcess = spawn(ytDlpPath, args);
     let output = '';
     let error = '';
 
-    process.stdout.on('data', (data) => {
+    ytProcess.stdout.on('data', (data) => {
       output += data.toString();
       const lines = output.split('\n');
       
@@ -135,11 +138,11 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
       }
     });
 
-    process.stderr.on('data', (data) => {
+    ytProcess.stderr.on('data', (data) => {
       error += data.toString();
     });
 
-    process.on('close', (code) => {
+    ytProcess.on('close', (code) => {
       if (code === 0) {
         resolve({ success: true, message: 'Shkarkimi u përfundua me sukses!' });
       } else {
@@ -147,7 +150,7 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
       }
     });
 
-    process.on('error', (err) => {
+    ytProcess.on('error', (err) => {
       reject(new Error(`Gabim në ekzekutimin e yt-dlp: ${err.message}`));
     });
   });
