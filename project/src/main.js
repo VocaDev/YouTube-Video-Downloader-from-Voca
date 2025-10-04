@@ -1,22 +1,121 @@
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+
+let mainWindow;
+
+// ---------------------------------------------------
+// 🔹 Create main window
+// ---------------------------------------------------
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 500,
+    height: 700,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    resizable: false,
+    maximizable: false,
+    icon: path.join(__dirname, '../assets/icon.png'),
+    show: false
+  });
+
+  mainWindow.loadFile(path.join(__dirname, 'index.html'));
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
+  mainWindow.setMenuBarVisibility(false);
+}
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// ---------------------------------------------------
+// 🔹 Utility Functions
+// ---------------------------------------------------
+function getYtDlpPath() {
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    return path.join(__dirname, '../bin/yt-dlp.exe');
+  } else {
+    return path.join(process.resourcesPath, 'bin', 'yt-dlp.exe');
+  }
+}
+
+function getFfmpegPath() {
+  const isDev = !app.isPackaged;
+  if (isDev) {
+    return path.join(__dirname, '../bin/ffmpeg.exe');
+  } else {
+    return path.join(process.resourcesPath, 'bin', 'ffmpeg.exe');
+  }
+}
+
+function checkYtDlp() {
+  return fs.existsSync(getYtDlpPath());
+}
+
+function checkFfmpeg() {
+  return fs.existsSync(getFfmpegPath());
+}
+
+// ---------------------------------------------------
+// 🔹 IPC HANDLERS
+// ---------------------------------------------------
+
+// Folder selection
+ipcMain.handle('select-folder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Zgjidhni dosjen për shkarkim'
+  });
+  if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+  return null;
+});
+
+// Default folder
+ipcMain.handle('get-default-folder', () => {
+  const desktopPath = path.join(os.homedir(), 'Desktop');
+  const defaultFolder = path.join(desktopPath, 'YouTube Videos');
+  if (!fs.existsSync(defaultFolder)) fs.mkdirSync(defaultFolder, { recursive: true });
+  return defaultFolder;
+});
+
+// ---------------------------------------------------
+// 🔹 MAIN DOWNLOAD LOGIC
+// ---------------------------------------------------
 ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
   return new Promise((resolve, reject) => {
     const ytDlpPath = getYtDlpPath();
-    const ffmpegPath = path.join(__dirname, '../bin/ffmpeg.exe');
+    const ffmpegPath = getFfmpegPath();
 
     if (!checkYtDlp()) {
-      reject(new Error('yt-dlp nuk u gjet. Ju lutem sigurohuni që yt-dlp.exe është në dosjen bin/'));
+      reject(new Error('yt-dlp nuk u gjet. Ju lutem vendosni yt-dlp.exe në dosjen bin/.'));
       return;
     }
 
-    if (!fs.existsSync(ffmpegPath)) {
-      reject(new Error('ffmpeg nuk u gjet. Ju lutem vendosni ffmpeg.exe në dosjen bin/'));
+    if (!checkFfmpeg()) {
+      reject(new Error('ffmpeg nuk u gjet. Ju lutem vendosni ffmpeg.exe në dosjen bin/.'));
       return;
     }
 
-    let args;
+    let args = [];
 
     if (format === 'mp3') {
-      // MP3 extraction
+      // Extract MP3
       args = [
         '--extract-audio',
         '--audio-format', 'mp3',
@@ -25,7 +124,7 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
         url
       ];
     } else {
-      // Full MP4 merge (H.264 + AAC) compatible with Windows Media Player
+      // Merge video + audio (REAL MP4 playable everywhere)
       args = [
         '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
         '--merge-output-format', 'mp4',
@@ -59,9 +158,9 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
 
     ytProcess.on('close', (code) => {
       if (code === 0) {
-        resolve({ success: true, message: 'Shkarkimi u përfundua me sukses!' });
+        resolve({ success: true, message: '✅ Shkarkimi dhe bashkimi përfundoi me sukses!' });
       } else {
-        reject(new Error(error || 'Gabim gjatë shkarkimit'));
+        reject(new Error(error || 'Gabim gjatë shkarkimit.'));
       }
     });
 
@@ -69,4 +168,14 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
       reject(new Error(`Gabim në ekzekutimin e yt-dlp: ${err.message}`));
     });
   });
+});
+
+// Open folder
+ipcMain.handle('open-folder', async (event, folderPath) => {
+  shell.openPath(folderPath);
+});
+
+// Check yt-dlp
+ipcMain.handle('check-ytdlp', () => {
+  return checkYtDlp();
 });
