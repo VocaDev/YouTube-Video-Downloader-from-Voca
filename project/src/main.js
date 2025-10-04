@@ -104,20 +104,22 @@ ipcMain.handle('download-video', async (event, { url, format, outputPath }) => {
 
     let args;
     if (format === 'mp3') {
-      args = [
-        '--extract-audio',
-        '--audio-format', 'mp3',
-        '--audio-quality', '192K',
-        '-o', path.join(outputPath, '%(title)s.%(ext)s'),
-        url
-      ];
-    } else {
-      args = [
-        '-f', 'best[height<=720]',
-        '-o', path.join(outputPath, '%(title)s.%(ext)s'),
-        url
-      ];
-    }
+  args = [
+  '-f', 'bestvideo+bestaudio/best',
+  '--merge-output-format', 'mp4', // <- merge audio+video into one mp4
+  '-o', path.join(outputPath, '%(title)s.%(ext)s'),
+  url
+];
+
+} else {
+  // Video gjithmonë MP4 për Media Player
+  args = [
+    '-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+    '-o', path.join(outputPath, '%(title)s.%(ext)s'),
+    url
+  ];
+}
+
 
     const ytProcess = spawn(ytDlpPath, args);
     let output = '';
